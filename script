@@ -250,3 +250,4 @@ document.addEventListener("DOMContentLoaded", () => {
   initContactPage();
 });
 window.addEventListener("resize", paintFloralBackground);
+
