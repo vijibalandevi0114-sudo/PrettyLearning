@@ -1,0 +1,252 @@
+/* =========================================================== PrettyLearning — shared behaviour =========================================================== */
+
+// ---------- floral background scatter (signature texture) ----------
+function paintFloralBackground() {
+  const holder = document.querySelector(".bg-scatter");
+  if (!holder) return;
+  const flowers = ["🌸", "🌼", "🌷", "🦋", "🌿", "✨"];
+  const count = window.innerWidth < 700 ? 10 : 18;
+  let html = "";
+  for (let i = 0; i < count; i++) {
+    const emoji = flowers[i % flowers.length];
+    const top = Math.random() * 100;
+    const left = Math.random() * 100;
+    const size = 14 + Math.random() * 22;
+    const rot = Math.random() * 360;
+    html += `<span style="position:absolute;top:${top}%;left:${left}%;font-size:${size}px; transform:rotate(${rot}deg);opacity:${ 0.18 + Math.random() * 0.22 }">${emoji}</span>`;
+  }
+  holder.innerHTML = html;
+}
+
+// ---------- nav active state ----------
+function markActiveNav() {
+  const here = location.pathname.split("/").pop() || "index.html";
+  document.querySelectorAll(".nav-links a").forEach((a) => {
+    const target = a.getAttribute("href");
+    if (target === here) a.classList.add("active");
+  });
+}
+
+// ---------- tutor catalogue (single source of truth) ----------
+const TUTORS = {
+  priya: {
+    name: "AI Priya",
+    role: "AI Female Tutor",
+    avatarBg: "bg-1",
+    emoji: "👩",
+    specialty: "Everyday Conversation",
+    price: 35,
+  },
+  arjun: {
+    name: "AI Arjun",
+    role: "AI Male Tutor",
+    avatarBg: "bg-2",
+    emoji: "👨",
+    specialty: "Business English",
+    price: 35,
+  },
+  bunty: {
+    name: "AI Bunty",
+    role: "AI Kid Tutor",
+    avatarBg: "bg-3",
+    emoji: "🧒",
+    specialty: "Fun Language Games",
+    price: 30,
+  },
+  dada: {
+    name: "AI Dada",
+    role: "AI Old Man Tutor",
+    avatarBg: "bg-4",
+    emoji: "👴",
+    specialty: "Grammar & Storytelling",
+    price: 40,
+  },
+  amma: {
+    name: "AI Amma",
+    role: "AI Old Woman Tutor",
+    avatarBg: "bg-5",
+    emoji: "👵",
+    specialty: "Pronunciation & Culture",
+    price: 40,
+  },
+  mehta: {
+    name: "AI Prof. Mehta",
+    role: "AI Professional Tutor",
+    avatarBg: "bg-6",
+    emoji: "🧑‍🏫",
+    specialty: "Exam Prep (IELTS/TOEFL)",
+    price: 50,
+  },
+};
+
+const LANGUAGES = [
+  "English",
+  "Hindi",
+  "Spanish",
+  "French",
+  "German",
+  "Japanese",
+  "Tamil",
+  "Bengali",
+  "Mandarin",
+  "Arabic",
+];
+
+function populateSelect(select, items, placeholder) {
+  if (!select) return;
+  select.innerHTML =
+    `<option value="">${placeholder}</option>` +
+    items.map((i) => `<option value="${i}">${i}</option>`).join("");
+}
+
+function qs(name) {
+  return new URLSearchParams(location.search).get(name);
+}
+
+// ---------- booking page logic ----------
+function initBookingPage() {
+  const tutorSelect = document.getElementById("tutorSelect");
+  const learnSelect = document.getElementById("learnLang");
+  const nativeSelect = document.getElementById("nativeLang");
+  const sessionsSelect = document.getElementById("sessionsSelect");
+  const form = document.getElementById("bookingForm");
+  if (!form) return;
+
+  Object.entries(TUTORS).forEach(([key, t]) => {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = `${t.name} — ${t.role} (₹${t.price}/session)`;
+    tutorSelect.appendChild(opt);
+  });
+  populateSelect(learnSelect, LANGUAGES, "Choose a language to learn");
+  populateSelect(
+    nativeSelect,
+    LANGUAGES,
+    "Choose your native / preferred language"
+  );
+
+  const preset = qs("tutor");
+  if (preset && TUTORS[preset]) tutorSelect.value = preset;
+
+  function updateSummary() {
+    const key = tutorSelect.value;
+    const t = TUTORS[key];
+    const sessions = parseInt(sessionsSelect.value || "1", 10);
+    const perSession = t ? t.price : 0;
+    const total = perSession * sessions;
+
+    document.getElementById("sumTutor").textContent = t
+      ? `${t.name} (${t.role})`
+      : "—";
+    document.getElementById("sumLearn").textContent = learnSelect.value || "—";
+    document.getElementById("sumNative").textContent = nativeSelect.value
+      ? `Taught in ${nativeSelect.value}`
+      : "—";
+    document.getElementById("sumPerSession").textContent = t
+      ? `₹${perSession}`
+      : "—";
+    document.getElementById("sumTotal").textContent = t ? `₹${total}` : "₹0";
+
+    document.getElementById("submitBooking").disabled = !(
+      key &&
+      learnSelect.value &&
+      nativeSelect.value
+    );
+  }
+
+  [tutorSelect, learnSelect, nativeSelect, sessionsSelect].forEach((el) => {
+    el.addEventListener("change", updateSummary);
+  });
+  updateSummary();
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    const key = tutorSelect.value;
+    const t = TUTORS[key];
+    if (!t) return;
+    const sessions = parseInt(sessionsSelect.value || "1", 10);
+    const total = t.price * sessions;
+    const params = new URLSearchParams({
+      tutor: t.name,
+      role: t.role,
+      learn: learnSelect.value,
+      native: nativeSelect.value,
+      sessions: sessions,
+      per: t.price,
+      total: total,
+      name: document.getElementById("learnerName").value || "Learner",
+    });
+    location.href = "confirmation.html?" + params.toString();
+  });
+}
+
+// ---------- tutors listing page: wire "Book" buttons ----------
+function initTutorsPage() {
+  document.querySelectorAll("[data-book-tutor]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      location.href =
+        "booking.html?tutor=" + encodeURIComponent(btn.dataset.bookTutor);
+    });
+  });
+}
+
+// ---------- pricing page: wire plan buttons ----------
+function initPricingPage() {
+  document.querySelectorAll("[data-plan]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      location.href =
+        "booking.html?plan=" + encodeURIComponent(btn.dataset.plan);
+    });
+  });
+}
+
+// ---------- confirmation page: render summary from query ----------
+function initConfirmationPage() {
+  const box = document.getElementById("confirmDetails");
+  if (!box) return;
+  const type = qs("type");
+  if (type === "contact") {
+    box.innerHTML = `<p>Thanks, <strong>${ qs("name") || "friend" }</strong>! Our garden team will reply to <strong>${qs("email") || "your inbox"}</strong> within one day. 🌸</p>`;
+    return;
+  }
+  const rows = [
+    ["Tutor", qs("tutor")],
+    ["Tutor type", qs("role")],
+    ["Learning", qs("learn")],
+    ["Taught in", qs("native")],
+    ["Sessions", qs("sessions")],
+    ["Price / session", qs("per") ? `₹${qs("per")}` : null],
+    ["Total", qs("total") ? `₹${qs("total")}` : null],
+  ];
+  box.innerHTML = rows
+    .filter(([, v]) => v)
+    .map(
+      ([k, v]) =>
+        `<div class="line"><span>${k}</span><strong>${v}</strong></div>`
+    )
+    .join("");
+}
+
+// ---------- contact page ----------
+function initContactPage() {
+  const form = document.getElementById("contactForm");
+  if (!form) return;
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = document.getElementById("contactName").value || "Learner";
+    const email = document.getElementById("contactEmail").value || "";
+    const params = new URLSearchParams({ type: "contact", name, email });
+    location.href = "confirmation.html?" + params.toString();
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  paintFloralBackground();
+  markActiveNav();
+  initBookingPage();
+  initTutorsPage();
+  initPricingPage();
+  initConfirmationPage();
+  initContactPage();
+});
+window.addEventListener("resize", paintFloralBackground);
